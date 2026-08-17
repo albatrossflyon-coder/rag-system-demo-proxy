@@ -24,8 +24,6 @@ RUN mkdir /CLIProxyAPI
 
 COPY --from=builder ./app/CLIProxyAPI /CLIProxyAPI/CLIProxyAPI
 
-COPY config.yaml /CLIProxyAPI/config.yaml
-
 WORKDIR /CLIProxyAPI
 
 EXPOSE 8317
@@ -34,4 +32,6 @@ ENV TZ=Asia/Shanghai
 
 RUN cp /usr/share/zoneinfo/${TZ} /etc/localtime && echo "${TZ}" > /etc/timezone
 
-CMD ["./CLIProxyAPI"]
+# config.yaml is never baked into the image -- it holds the real OpenRouter key
+# and is injected at deploy time via Render's Secret Files (mounted under /etc/secrets/).
+CMD ["./CLIProxyAPI", "--config", "/etc/secrets/config.yaml"]
