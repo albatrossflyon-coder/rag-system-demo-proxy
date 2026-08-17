@@ -178,12 +178,17 @@ func (s *Service) Run(ctx context.Context) error {
 
 		watcherWrapper, errCreate := s.watcherFactory(s.configPath, s.cfg.AuthDir, reloadCallback)
 		if errCreate != nil {
-			return fmt.Errorf("cliproxy: failed to create watcher: %w", errCreate)
-		}
-		s.watcher = watcherWrapper
-		s.ensureAuthUpdateQueue(ctx)
-		if s.authUpdates != nil {
-			watcherWrapper.SetAuthUpdateQueue(s.authUpdates)
+			// A missing fs-watcher (e.g. a resource-constrained container's inotify/fd
+			// limit) only costs config/auth-dir hot-reload -- not fatal for a deployment
+			// whose config is static after startup, so warn and keep running instead of
+			// crashing the whole process over it.
+			log.Warnf("failed to create file watcher, continuing without hot-reload: %v", errCreate)
+		} else {
+			s.watcher = watcherWrapper
+			s.ensureAuthUpdateQueue(ctx)
+			if s.authUpdates != nil {
+				watcherWrapper.SetAuthUpdateQueue(s.authUpdates)
+			}
 		}
 		watcherWrapper.SetConfig(s.cfg)
 		s.registerPluginAuthParser()
